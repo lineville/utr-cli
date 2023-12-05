@@ -53,14 +53,14 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 // -----------------------------------------------------------------------------
 
 type model struct {
-	showSearch     bool
+	searching      bool
 	searchQuery    textinput.Model
+	playerList     list.Model
+	resultsList    list.Model
 	selectedPlayer list.Item
-	list           list.Model
-	quitting       bool
 }
 
-type PlayerSearchResult struct {
+type PlayerSearchResults struct {
 	Players []Player `json:"hits"`
 	Total   int      `json:"total"`
 }
@@ -77,7 +77,7 @@ type Player struct {
 	} `json:"source"`
 }
 
-type PlayerProfileResult struct {
+type Profile struct {
 	FirstName   string  `json:"firstName"`
 	LastName    string  `json:"lastName"`
 	Gender      string  `json:"gender"`
@@ -88,9 +88,68 @@ type PlayerProfileResult struct {
 	DoublesUTR  float64 `json:"doublesUtr"`
 }
 
+type MatchResults struct {
+	Wins          int     `json:"wins"`
+	Losses        int     `json:"losses"`
+	Events        []Event `json:"events"`
+	WinLossString string  `json:"winLossString"`
+}
+
+type Event struct {
+	Id        int    `json:"id"`
+	Name      string `json:"name"`
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
+	Draws     []Draw `json:"draws"`
+}
+
+type Draw struct {
+	Id       int     `json:"id"`
+	Name     string  `json:"name"`
+	TeamType string  `json:"teamType"`
+	Gender   string  `json:"gender"`
+	Results  []Match `json:"results"`
+}
+
+type Match struct {
+	Id       int               `json:"id"`
+	Date     string            `json:"date"`
+	Players  MatchParticipants `json:"players"`
+	IsWinner bool              `json:"isWinner"`
+	Score    Score             `json:"score"`
+}
+
+type MatchParticipants struct {
+	Winner1 Profile `json:"winner1"`
+	Winner2 Profile `json:"winner2"`
+	Loser1  Profile `json:"loser1"`
+	Loser2  Profile `json:"loser2"`
+}
+
+type Score struct {
+	FirstSet  Set `json:"1"`
+	SecondSet Set `json:"2"`
+	ThirdSet  Set `json:"3"`
+}
+
+type Set struct {
+	WinnerScore         int `json:"winner"`
+	LoserScore          int `json:"loser"`
+	LoserTieBreakScore  int `json:"tiebreak"`
+	WinnerTieBreakScore int `json:"winnerTiebreak"`
+}
+
+type errorMessage struct {
+	err error
+}
+
 // Needed to implement the list.Item interface
 func (p Player) FilterValue() string {
 	return p.Source.DisplayName
+}
+
+func (m Event) FilterValue() string {
+	return m.Name
 }
 
 // -----------------------------------------------------------------------------
@@ -103,11 +162,18 @@ func initialModel() model {
 	ti.Focus()
 	ti.CharLimit = 156
 
+	playerList := list.New(nil, itemDelegate{}, 40, 20)
+	playerList.Title = "Select a player"
+	playerList.SetShowStatusBar(false)
+
+	resultsList := list.New(nil, itemDelegate{}, 40, 20)
+	resultsList.SetShowStatusBar(false)
+
 	return model{
-		showSearch:     true,
+		searching:      true,
 		searchQuery:    ti,
-		list:           list.New(nil, itemDelegate{}, 40, 16),
-		quitting:       false,
+		playerList:     playerList,
+		resultsList:    resultsList,
 		selectedPlayer: nil,
 	}
 }
@@ -119,60 +185,79 @@ func (m model) Init() tea.Cmd {
 
 // Update handles events from the UI and updates the model
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.list.SetWidth(msg.Width)
+		m.playerList.SetWidth(msg.Width)
 		return m, nil
 
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
 		case "ctrl+c":
-			m.quitting = true
 			return m, tea.Quit
 
 		case "enter":
-			if m.showSearch {
-				playerSearchResult, err := searchPlayers(m.searchQuery.Value())
-				if err != nil || playerSearchResult.Total == 0 {
-					fmt.Println("No player found.\n", err)
-					return m, tea.Quit
-				}
-
-				// Only one result found, open the player profile
-				if playerSearchResult.Total == 1 {
-					m.selectedPlayer = playerSearchResult.Players[0]
-					m.showSearch = false
-				} else { // Multiple results found, show the list of options
-					players := make([]list.Item, playerSearchResult.Total)
-					for i, player := range playerSearchResult.Players {
-						players[i] = list.Item(player)
-					}
-					if err != nil {
-						fmt.Println("Error searching for player:", err)
-					}
-					m.list.SetItems(players)
-					m.showSearch = false
-				}
+			if m.searching {
+				m.searching = false
+				m.playerList.StartSpinner()
+				return m, searchPlayers(m.searchQuery.Value())
 			} else {
-				i, ok := m.list.SelectedItem().(Player)
+				i, ok := m.playerList.SelectedItem().(Player)
 				if ok {
 					m.selectedPlayer = i
 				}
+				m.resultsList.StartSpinner()
+				return m, playerProfile(m.selectedPlayer.(Player).Source.Id)
 			}
+		}
+
+	case PlayerSearchResults:
+		players := make([]list.Item, msg.Total)
+		for i, player := range msg.Players {
+			players[i] = list.Item(player)
+		}
+		m.playerList.SetItems(players)
+		m.playerList.StopSpinner()
+		return m, nil
+
+	case MatchResults:
+		matches := make([]list.Item, len(msg.Events))
+		for i, event := range msg.Events {
+			matches[i] = list.Item(event)
+		}
+		m.resultsList.SetItems(matches)
+		m.resultsList.StopSpinner()
+		return m, nil
+
+	case Profile:
+		m.resultsList.Title = m.selectedPlayer.(Player).Source.DisplayName + "'s Match Results"
+
+		return m, playerResults(m.selectedPlayer.(Player).Source.Id)
+
+	}
+
+	if m.searching {
+		m.searchQuery, cmd = m.searchQuery.Update(msg)
+		return m, cmd
+	} else {
+
+		if m.selectedPlayer == nil {
+			m.playerList, cmd = m.playerList.Update(msg)
+			return m, cmd
+		} else {
+			m.resultsList, cmd = m.resultsList.Update(msg)
+			return m, cmd
 		}
 	}
 
-	var cmd tea.Cmd
-	m.searchQuery, _ = m.searchQuery.Update(msg)
-	m.list, cmd = m.list.Update(msg)
-	return m, cmd
 }
 
 // View renders the UI from the current model
 func (m model) View() string {
 
 	// Show text input if we are searching
-	if m.showSearch {
+	if m.searching {
 		return fmt.Sprintf(
 			"Search for a player by name\n\n%s\n\n%s",
 			m.searchQuery.View(),
@@ -181,91 +266,97 @@ func (m model) View() string {
 	}
 	// A player has been selected, show their results
 	if m.selectedPlayer != nil {
-		// Open the player profile
-		//  Theres really not a lot of data in the profile but we can put some of it in the title of the list
-		// instead lets search for the players results and show them in a navigatable list
-		profile, err := playerProfile(m.selectedPlayer.(Player).Source.Id)
-		if err != nil {
-			fmt.Println("Error getting player profile:", err)
-		}
-
-		m.list.Title = m.selectedPlayer.(Player).Source.DisplayName + " (" + m.selectedPlayer.(Player).Source.Location.Display + ")\nSingles UTR: " + strconv.FormatFloat(profile.SinglesUTR, 'f', 2, 64) + " Doubles UTR: " + strconv.FormatFloat(profile.DoublesUTR, 'f', 2, 64)
-		m.list.Styles.Title = lipgloss.NewStyle().
-			Bold(true).
-			Padding(0, 1).
-			Foreground(lipgloss.Color("#FAFAFA")).
-			Background(lipgloss.Color("#7D56F4")).
-			AlignHorizontal(lipgloss.Center)
-		m.list.SetShowStatusBar(false)
-
-		return "\n" + m.list.View()
+		return "\n" + m.resultsList.View()
+	} else {
+		return "\n" + m.playerList.View()
 	}
-
-	// Show the list of players from the search results
-	return "\n" + m.list.View()
 }
 
 // Searches for players by name (only shows 5 results)
-func searchPlayers(player string) (result PlayerSearchResult, err error) {
+func searchPlayers(player string) tea.Cmd {
+	return func() tea.Msg {
+		r := PlayerSearchResults{}
+		req, err := http.NewRequest("GET", "https://app.universaltennis.com/api/v2/search/players?query="+url.PathEscape(player), nil)
+		if err != nil {
+			return errorMessage{err}
+		}
 
-	r := PlayerSearchResult{}
-	req, err := http.NewRequest("GET", "https://app.universaltennis.com/api/v2/search/players?query="+url.PathEscape(player), nil)
-	if err != nil {
-		fmt.Println("Error forming the request url:", err)
-		return r, err
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil || resp.StatusCode != 200 {
+			return errorMessage{err}
+		}
+
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return errorMessage{err}
+		}
+
+		err = json.Unmarshal(body, &r)
+		if err != nil {
+			return errorMessage{err}
+		}
+		return r
 	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil || resp.StatusCode != 200 {
-		fmt.Println("Error making request:", err)
-		return r, err
-	}
-
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("Error reading response body:", err)
-		return r, err
-	}
-
-	err = json.Unmarshal(body, &r)
-	if err != nil {
-		fmt.Println("Error parsing response body:", err)
-		return r, err
-	}
-	return r, nil
 }
 
 // Gets a player's profile by id
-func playerProfile(playerId int) (result PlayerProfileResult, err error) {
-	r := PlayerProfileResult{}
-	req, err := http.NewRequest("GET", "https://app.universaltennis.com/api/v1/player/"+strconv.Itoa(playerId), nil)
-	if err != nil {
-		fmt.Println("Error forming the request url:", err)
-		return r, err
-	}
+func playerProfile(playerId int) tea.Cmd {
+	return func() tea.Msg {
+		r := Profile{}
+		req, err := http.NewRequest("GET", "https://app.universaltennis.com/api/v1/player/"+strconv.Itoa(playerId), nil)
+		if err != nil {
+			return errorMessage{err}
+		}
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil || resp.StatusCode != 200 {
-		fmt.Println("Error making request:", err)
-		return r, err
-	}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil || resp.StatusCode != 200 {
+			return errorMessage{err}
+		}
 
-	defer resp.Body.Close()
+		defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("Error reading response body:", err)
-		return r, err
-	}
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return errorMessage{err}
+		}
 
-	err = json.Unmarshal(body, &r)
-	if err != nil {
-		fmt.Println("Error parsing response body:", err)
-		return r, err
+		err = json.Unmarshal(body, &r)
+		if err != nil {
+			return errorMessage{err}
+		}
+		return r
 	}
-	return r, nil
+}
+
+// Gets a player's match results by id
+func playerResults(playerId int) tea.Cmd {
+	return func() tea.Msg {
+		r := MatchResults{}
+		req, err := http.NewRequest("GET", "https://app.universaltennis.com/api/v1/player/"+strconv.Itoa(playerId)+"/results", nil)
+		if err != nil {
+			return errorMessage{err}
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil || resp.StatusCode != 200 {
+			return errorMessage{err}
+		}
+
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return errorMessage{err}
+		}
+
+		err = json.Unmarshal(body, &r)
+		if err != nil {
+			return errorMessage{err}
+		}
+		return r
+	}
 }
 
 func main() {
