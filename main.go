@@ -25,18 +25,41 @@ var (
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
 )
 
-type itemDelegate struct{}
+type playerItemDelegate struct{}
 
-func (d itemDelegate) Height() int                             { return 1 }
-func (d itemDelegate) Spacing() int                            { return 0 }
-func (d itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+func (d playerItemDelegate) Height() int                             { return 1 }
+func (d playerItemDelegate) Spacing() int                            { return 0 }
+func (d playerItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d playerItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	i, ok := listItem.(Player)
 	if !ok {
 		return
 	}
 
 	str := fmt.Sprintf("%d. %s", index+1, i.Source.DisplayName+" ("+i.Source.Location.Display+")")
+
+	fn := itemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return selectedItemStyle.Render("> " + strings.Join(s, " "))
+		}
+	}
+
+	fmt.Fprint(w, fn(str))
+}
+
+type eventItemDelegate struct{}
+
+func (d eventItemDelegate) Height() int                             { return 1 }
+func (d eventItemDelegate) Spacing() int                            { return 0 }
+func (d eventItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d eventItemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(Event)
+	if !ok {
+		return
+	}
+
+	str := fmt.Sprintf("%d. %s", index+1, i.Name)
 
 	fn := itemStyle.Render
 	if index == m.Index() {
@@ -162,11 +185,11 @@ func initialModel() model {
 	ti.Focus()
 	ti.CharLimit = 156
 
-	playerList := list.New(nil, itemDelegate{}, 40, 20)
+	playerList := list.New(nil, playerItemDelegate{}, 40, 20)
 	playerList.Title = "Select a player"
 	playerList.SetShowStatusBar(false)
 
-	resultsList := list.New(nil, itemDelegate{}, 40, 20)
+	resultsList := list.New(nil, eventItemDelegate{}, 40, 20)
 	resultsList.SetShowStatusBar(false)
 
 	return model{
