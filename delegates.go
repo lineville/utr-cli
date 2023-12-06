@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+	itemStyle         = lipgloss.NewStyle().PaddingLeft(2)
+	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("#98FB98"))
 )
 
 // -----------------------------------------------------------------------------
@@ -38,16 +38,16 @@ func (d Player) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 		return
 	}
 
-	str := fmt.Sprintf("%d. %s", index+1, i.Source.DisplayName+" ("+i.Source.Location.Display+")")
+	player := fmt.Sprintf("%d. %s", index+1, i.Source.DisplayName+" ("+i.Source.Location.Display+")")
 
 	fn := itemStyle.Render
 	if index == m.Index() {
 		fn = func(s ...string) string {
-			return selectedItemStyle.Render("> " + strings.Join(s, " "))
+			return selectedItemStyle.Render("→ " + strings.Join(s, " "))
 		}
 	}
 
-	fmt.Fprint(w, fn(str))
+	fmt.Fprint(w, fn(player))
 }
 
 // -----------------------------------------------------------------------------
@@ -74,14 +74,13 @@ func (d Event) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 	if !ok {
 		return
 	}
-	// Render the title with the draws listed below
 
 	event := fmt.Sprintf("%d. %s", index+1, i.Title())
 
 	fn := itemStyle.Render
 	if index == m.Index() {
 		fn = func(s ...string) string {
-			return selectedItemStyle.Render("🎾 " + strings.Join(s, "\n"))
+			return selectedItemStyle.Render("→ " + strings.Join(s, "\n"))
 		}
 	}
 

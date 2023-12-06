@@ -5,10 +5,8 @@ import (
 	"os"
 
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // -----------------------------------------------------------------------------
@@ -25,26 +23,21 @@ type model struct {
 
 func initialModel() model {
 	ti := textinput.New()
+	ti.Prompt = "🔍 "
+	ti.PromptStyle.PaddingLeft(2)
 	ti.Placeholder = "Player name"
 	ti.Focus()
 	ti.CharLimit = 156
 
 	playerList := list.New(nil, Player{}, 40, 20)
 	playerList.Title = "Select a player"
-	playerList.SetShowStatusBar(false)
-
-	ps := spinner.New()
-	ps.Spinner = spinner.Dot
-	ps.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
-	playerList.SetSpinner(ps.Spinner)
+	playerList.Styles.TitleBar.PaddingLeft(2)
+	playerList.SetStatusBarItemName("player", "players")
 
 	resultsList := list.New(nil, Event{}, 40, 20)
 	resultsList.Title = ""
-	resultsList.SetShowStatusBar(false)
-	rs := spinner.New()
-	rs.Spinner = spinner.Dot
-	rs.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
-	resultsList.SetSpinner(rs.Spinner)
+	resultsList.Styles.TitleBar.PaddingLeft(2)
+	resultsList.SetStatusBarItemName("event", "events")
 
 	return model{
 		searching:      true,
@@ -131,19 +124,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the UI from the current model
 func (m model) View() string {
 
-	// Show text input if we are searching
 	if m.searching {
-		return fmt.Sprintf(
-			"Search for a player by name\n\n%s\n\n%s",
-			m.searchQuery.View(),
-			"(esc to quit)",
-		) + "\n"
+		return m.searchQuery.View()
 	}
-	// A player has been selected, show their results
 	if m.selectedPlayer != nil {
-		return "\n" + m.resultsList.View()
+		return m.resultsList.View()
 	} else {
-		return "\n" + m.playerList.View()
+		return m.playerList.View()
 	}
 }
 
