@@ -19,8 +19,8 @@ import (
 var (
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(2)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	greenStyle        = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("10"))
-	blueStyle         = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("14"))
+	greenStyle        = lipgloss.NewStyle().PaddingLeft(4).Foreground(lipgloss.Color("10"))
+	redStyle          = lipgloss.NewStyle().PaddingLeft(4).Foreground(lipgloss.Color("9"))
 )
 
 // -----------------------------------------------------------------------------
@@ -75,32 +75,29 @@ func (e Event) FilterValue() string {
 
 // Renders an event item
 func (d Event) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(Event)
+	e, ok := listItem.(Event)
 	if !ok {
 		return
 	}
 
-	eventRows := make([]string, len(i.Draws)+1)
-	event := fmt.Sprintf("%d. %s", index+1, i.Title())
-	eventRows[0] = event
-
-	playerName := strings.Split(m.Title, "'s Match Results")[0]
-	for i, draw := range i.Draws {
-		eventRows[i+1] = draw.Name + " " + formatDrawWinLoss(draw, playerName)
+	draws := make([]string, len(e.Draws)+1)
+	draws[0] = fmt.Sprintf("%d. %s", index+1, e.Title())
+	for i, d := range e.Draws {
+		draws[i+1] = d.Name
 	}
 
-	fn := func(s ...string) string { return itemStyle.Render(strings.Join(s, "\n   • ")) }
+	playerName := strings.Split(m.Title, "'s Match Results")[0]
+
+	// Render the unselected draws
+	fn := func(s ...string) string { return itemStyle.Render(strings.Join(s, "\n   🎾 ")) }
+
 	if index == m.Index() {
 		fn = func(s ...string) string {
-			eventPrintout := selectedItemStyle.Render("→ " + event)
-			for i := range eventRows {
-				if i == 0 {
-					continue
-				}
-				if i%2 == 0 {
-					eventPrintout += greenStyle.Render("\n   • " + eventRows[i])
-				} else {
-					eventPrintout += blueStyle.Render("\n   • " + eventRows[i])
+			eventPrintout := selectedItemStyle.Render("→ " + e.Title())
+			for _, d := range e.Draws {
+				eventPrintout += itemStyle.Render("\n   🎾 " + d.Name + " " + formatDrawWinLoss(d, playerName))
+				for _, result := range d.Results {
+					eventPrintout += formatMatchScore(result, playerName)
 				}
 			}
 
@@ -108,7 +105,33 @@ func (d Event) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 		}
 	}
 
-	fmt.Fprint(w, fn(eventRows...))
+	fmt.Fprint(w, fn(draws...))
+}
+
+func formatMatchScore(match Match, playerName string) string {
+	winner := match.Players.Winner1.FirstName + " " + match.Players.Winner1.LastName
+	if match.Players.Winner2.FirstName != "" {
+		winner += " / " + match.Players.Winner2.FirstName + " " + match.Players.Winner2.LastName
+	}
+	loser := match.Players.Loser1.FirstName + " " + match.Players.Loser1.LastName
+	if match.Players.Loser2.FirstName != "" {
+		loser += " / " + match.Players.Loser2.FirstName + " " + match.Players.Loser2.LastName
+	}
+	scoreString := fmt.Sprintf("%s def. %s (%d-%d", winner, loser, match.Score.FirstSet.WinnerScore, match.Score.FirstSet.LoserScore)
+	if match.Score.SecondSet.WinnerScore != 0 {
+		scoreString += fmt.Sprintf(", %d-%d", match.Score.SecondSet.WinnerScore, match.Score.SecondSet.LoserScore)
+	}
+	if match.Score.ThirdSet.WinnerScore != 0 {
+		scoreString += fmt.Sprintf(", %d-%d", match.Score.ThirdSet.WinnerScore, match.Score.ThirdSet.LoserScore)
+	}
+	scoreString += ")"
+
+	if strings.Contains(winner, playerName) {
+		return greenStyle.Render("\n   • " + scoreString)
+	} else {
+		return redStyle.Render("\n   • " + scoreString)
+	}
+
 }
 
 // Formats the win-loss record for a draw

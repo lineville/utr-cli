@@ -134,22 +134,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the UI from the current model
 func (m model) View() string {
-
 	if m.searching {
-		return m.searchQuery.View()
+		return "\n" + m.searchQuery.View()
 	}
 	if m.selectedPlayer != nil {
-		return m.resultsList.View()
+		return "\n" + m.resultsList.View()
 	} else {
-		return m.playerList.View()
+		return "\n" + m.playerList.View()
 	}
 }
 
 func main() {
-	// Pass in command line arguments to the program
-	args := os.Args[1:] // TODO pass into the initial model or the options ?
-
-	if _, err := tea.NewProgram(initialModel(args...)).Run(); err != nil {
+	if _, err := tea.NewProgram(initialModel(os.Args[1:]...)).Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
