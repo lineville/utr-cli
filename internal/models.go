@@ -1,4 +1,4 @@
-package main
+package internal
 
 // -----------------------------------------------------------------------------
 // Defines the API Response Structures

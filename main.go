@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/lineville/utr-cli/internal"
 )
 
 // -----------------------------------------------------------------------------
@@ -29,15 +32,28 @@ func initialModel(args ...string) model {
 	ti.Focus()
 	ti.CharLimit = 156
 
-	playerList := list.New(nil, Player{}, 40, 20)
+	playerList := list.New(nil, internal.Player{}, 40, 20)
 	playerList.Title = "Select a player"
 	playerList.Styles.TitleBar.PaddingLeft(2)
-	playerList.SetStatusBarItemName("player", "players")
+	playerList.Styles.Title.Background(lipgloss.Color("#25CCF7"))
+	playerList.SetStatusBarItemName("🎾 player", "🎾 players")
 
-	resultsList := list.New(nil, Event{}, 40, 20)
+	resultsList := list.New(nil, internal.Event{}, 40, 20)
 	resultsList.Title = ""
 	resultsList.Styles.TitleBar.PaddingLeft(2)
-	resultsList.SetStatusBarItemName("event", "events")
+	resultsList.Styles.Title.Background(lipgloss.Color("#25CCF7"))
+	resultsList.SetStatusBarItemName("🎾 event", "🎾 events")
+
+	additionalKeyBindings := func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "Back")),
+		}
+	}
+
+	resultsList.AdditionalFullHelpKeys = additionalKeyBindings
+	resultsList.AdditionalShortHelpKeys = additionalKeyBindings
+	playerList.AdditionalFullHelpKeys = additionalKeyBindings
+	playerList.AdditionalShortHelpKeys = additionalKeyBindings
 
 	m := model{
 		searching:      true,
@@ -61,7 +77,7 @@ func initialModel(args ...string) model {
 func (m model) Init() tea.Cmd {
 	// If a name was passed in via cli args search for it
 	if m.searchQuery.Value() != "" {
-		return searchPlayers(m.searchQuery.Value())
+		return internal.SearchPlayers(m.searchQuery.Value())
 	}
 
 	// Default to text input blinking
@@ -69,12 +85,17 @@ func (m model) Init() tea.Cmd {
 }
 
 // Update handles events from the UI and updates the model
+
+// TODO Implement spinners while data is fetching
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.playerList.SetWidth(msg.Width)
+		m.resultsList.SetWidth(msg.Width)
+		m.playerList.SetHeight(msg.Height - 2)
+		m.resultsList.SetHeight(msg.Height - 24)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -85,14 +106,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.searching {
 				m.searching = false
-				return m, searchPlayers(m.searchQuery.Value())
+				return m, internal.SearchPlayers(m.searchQuery.Value())
 			} else {
-				m.selectedPlayer, _ = m.playerList.SelectedItem().(Player)
-				return m, playerProfile(m.selectedPlayer.(Player).Source.Id)
+				m.selectedPlayer, _ = m.playerList.SelectedItem().(internal.Player)
+				return m, internal.PlayerProfile(m.selectedPlayer.(internal.Player).Source.Id)
+			}
+
+		case "esc":
+			if m.searching {
+				return m, tea.Quit
+			} else {
+				if m.selectedPlayer == nil {
+					m.searching = true
+					return m, nil
+				} else {
+					m.selectedPlayer = nil
+					return m, internal.SearchPlayers(m.searchQuery.Value())
+				}
 			}
 		}
 
-	case PlayerSearchResults:
+	case internal.PlayerSearchResults:
 		players := make([]list.Item, len(msg.Players))
 		for i, player := range msg.Players {
 			players[i] = list.Item(player)
@@ -100,7 +134,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.playerList.SetItems(players)
 		return m, nil
 
-	case MatchResults:
+	case internal.MatchResults:
 		matches := make([]list.Item, len(msg.Events))
 		for i, event := range msg.Events {
 			matches[i] = list.Item(event)
@@ -108,9 +142,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resultsList.SetItems(matches)
 		return m, nil
 
-	case Profile:
-		m.resultsList.Title = m.selectedPlayer.(Player).Source.DisplayName + "'s Match Results"
-		return m, playerResults(m.selectedPlayer.(Player).Source.Id)
+	case internal.Profile:
+		m.resultsList.Title = m.selectedPlayer.(internal.Player).Source.DisplayName + "'s Match Results"
+		return m, internal.PlayerResults(m.selectedPlayer.(internal.Player).Source.Id)
 
 	}
 
@@ -138,9 +172,9 @@ func (m model) View() string {
 		return "\n  Search for a Tennis or PickleBall player\n\n" + m.searchQuery.View()
 	}
 	if m.selectedPlayer != nil {
-		return "\n" + m.resultsList.View()
+		return "\n\n" + m.resultsList.View()
 	} else {
-		return "\n" + m.playerList.View()
+		return "\n\n" + m.playerList.View()
 	}
 }
 

@@ -1,4 +1,4 @@
-module utr-cli
+module github.com/lineville/utr-cli
 
 go 1.21.3
 

@@ -1,4 +1,4 @@
-package main
+package internal
 
 // -----------------------------------------------------------------------------
 // Handles the List Item Rendering and other details
@@ -17,10 +17,10 @@ import (
 )
 
 var (
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(2)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	greenStyle        = lipgloss.NewStyle().PaddingLeft(4).Foreground(lipgloss.Color("10"))
-	redStyle          = lipgloss.NewStyle().PaddingLeft(4).Foreground(lipgloss.Color("9"))
+	itemStyle         = lipgloss.NewStyle().PaddingLeft(2).PaddingRight(2)
+	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).PaddingRight(2).Foreground(lipgloss.Color("#25CCF7")).Border(lipgloss.RoundedBorder())
+	greenStyle        = lipgloss.NewStyle().PaddingLeft(4).Foreground(lipgloss.Color("#0be881"))
+	redStyle          = lipgloss.NewStyle().PaddingLeft(4).Foreground(lipgloss.Color("#f53b57"))
 )
 
 // -----------------------------------------------------------------------------
@@ -32,7 +32,7 @@ func (d Player) Spacing() int                            { return 0 }
 func (d Player) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
 
 func (p Player) FilterValue() string {
-	return p.Source.DisplayName
+	return p.Source.DisplayName + " (" + p.Source.Location.Display + ")"
 }
 
 // Renders a player item
@@ -59,7 +59,7 @@ func (d Player) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 // -----------------------------------------------------------------------------
 
 func (e Event) Title() string {
-	return e.Name + " [" + formatDate(e.StartDate) + " - " + formatDate(e.EndDate) + "]"
+	return e.Name + " (" + formatDate(e.StartDate) + " - " + formatDate(e.EndDate) + ")"
 }
 
 func (e Event) Height() int  { return 1 }
@@ -89,13 +89,13 @@ func (d Event) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 	playerName := strings.Split(m.Title, "'s Match Results")[0]
 
 	// Render the unselected draws
-	fn := func(s ...string) string { return itemStyle.Render(strings.Join(s, "\n   🎾 ")) }
+	fn := func(s ...string) string { return itemStyle.Render(strings.Join(s, "\n   • ")) }
 
 	if index == m.Index() {
 		fn = func(s ...string) string {
-			eventPrintout := selectedItemStyle.Render("→ " + e.Title())
+			eventPrintout := selectedItemStyle.Render(fmt.Sprintf("→ %d. %s", index+1, e.Title()))
 			for _, d := range e.Draws {
-				eventPrintout += itemStyle.Render("\n   🎾 " + d.Name + " " + formatDrawWinLoss(d, playerName))
+				eventPrintout += itemStyle.Render("\n   • " + d.Name + " " + formatDrawWinLoss(d, playerName))
 				for _, result := range d.Results {
 					eventPrintout += formatMatchScore(result, playerName)
 				}
@@ -133,9 +133,9 @@ func formatMatchScore(match Match, playerName string) string {
 	scoreString += ")"
 
 	if strings.Contains(winner, playerName) {
-		return greenStyle.Render("\n  • " + scoreString)
+		return greenStyle.Render("\n   • " + scoreString)
 	} else {
-		return redStyle.Render("\n  • " + scoreString)
+		return redStyle.Render("\n   • " + scoreString)
 	}
 }
 
@@ -165,3 +165,10 @@ func formatDate(date string) string {
 	}
 	return t.Format("01/02/2006")
 }
+
+// TODO show tiebreak scores conditionally (also default to 3rd set tiebreak as the set score if it's 1-0)
+// TODO show default draw as 'individual match if none is there'
+// TODO show overall win-loss record for each draw when non-selected
+// TODO show the overall record across singles/doubles somewhere
+// TODO show utr ratings somewhere
+// TODO show gender on the search results
