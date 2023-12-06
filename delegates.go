@@ -16,7 +16,8 @@ import (
 )
 
 var (
-	appStyle = lipgloss.NewStyle().Padding(1, 2)
+	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
+	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
 )
 
 // -----------------------------------------------------------------------------
@@ -77,10 +78,10 @@ func (d Event) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 
 	event := fmt.Sprintf("%d. %s", index+1, i.Title())
 
-	fn := appStyle.Render
+	fn := itemStyle.Render
 	if index == m.Index() {
 		fn = func(s ...string) string {
-			return appStyle.Render("🎾 " + strings.Join(s, "\n"))
+			return selectedItemStyle.Render("🎾 " + strings.Join(s, "\n"))
 		}
 	}
 
