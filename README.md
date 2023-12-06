@@ -1,6 +1,6 @@
 # 🎾 UTR CLI
 
-A command line interface for the [Universal Tennis Rating](https://www.myutr.com/) system. This tool allows you to quickly lookup UTR players and view their match history.
+A command line interface for the [Universal Tennis Rating](https://www.myutr.com/) system. This tool allows you to quickly lookup Tennis/PickleBall players and view their match history.
 
 ## Installation
 
