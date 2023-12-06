@@ -1,5 +1,9 @@
 package main
 
+// -----------------------------------------------------------------------------
+// Defines the API Response Structures
+// -----------------------------------------------------------------------------
+
 type PlayerSearchResults struct {
 	Players []Player `json:"hits"`
 	Total   int      `json:"total"`

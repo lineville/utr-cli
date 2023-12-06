@@ -1,9 +1,12 @@
 package main
 
+// -----------------------------------------------------------------------------
+// Handles the List Item Rendering and other details
+// -----------------------------------------------------------------------------
+
 import (
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,8 +16,7 @@ import (
 )
 
 var (
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+	appStyle = lipgloss.NewStyle().Padding(1, 2)
 )
 
 // -----------------------------------------------------------------------------
@@ -28,6 +30,7 @@ func (d Player) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
 func (p Player) FilterValue() string {
 	return p.Source.DisplayName
 }
+
 func (d Player) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	i, ok := listItem.(Player)
 	if !ok {
@@ -54,10 +57,6 @@ func (e Event) Title() string {
 	return e.Name + " (" + formatDate(e.StartDate) + " - " + formatDate(e.EndDate) + ")"
 }
 
-func (e Event) Description() string {
-	return strconv.Itoa(len(e.Draws)) + " draws"
-}
-
 func (e Event) Height() int  { return 1 }
 func (e Event) Spacing() int { return 0 }
 
@@ -74,17 +73,18 @@ func (d Event) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 	if !ok {
 		return
 	}
+	// Render the title with the draws listed below
 
-	str := fmt.Sprintf("%d. %s", index+1, i.Title()+" ("+i.Description()+")")
+	event := fmt.Sprintf("%d. %s", index+1, i.Title())
 
-	fn := itemStyle.Render
+	fn := appStyle.Render
 	if index == m.Index() {
 		fn = func(s ...string) string {
-			return selectedItemStyle.Render("🎾 " + strings.Join(s, " "))
+			return appStyle.Render("🎾 " + strings.Join(s, "\n"))
 		}
 	}
 
-	fmt.Fprint(w, fn(str))
+	fmt.Fprint(w, fn(event))
 }
 
 func formatDate(date string) string {
