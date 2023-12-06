@@ -117,7 +117,13 @@ func formatMatchScore(match Match, playerName string) string {
 	if match.Players.Loser2.FirstName != "" {
 		loser += " / " + match.Players.Loser2.FirstName + " " + match.Players.Loser2.LastName
 	}
-	scoreString := fmt.Sprintf("%s def. %s (%d-%d", winner, loser, match.Score.FirstSet.WinnerScore, match.Score.FirstSet.LoserScore)
+	scoreString := fmt.Sprintf("%s def. %s", winner, loser)
+	if match.Score.FirstSet.WinnerScore != 0 {
+		scoreString += fmt.Sprintf(" (%d-%d", match.Score.FirstSet.WinnerScore, match.Score.FirstSet.LoserScore)
+	} else {
+		scoreString += " (ff"
+	}
+
 	if match.Score.SecondSet.WinnerScore != 0 {
 		scoreString += fmt.Sprintf(", %d-%d", match.Score.SecondSet.WinnerScore, match.Score.SecondSet.LoserScore)
 	}
@@ -127,11 +133,10 @@ func formatMatchScore(match Match, playerName string) string {
 	scoreString += ")"
 
 	if strings.Contains(winner, playerName) {
-		return greenStyle.Render("\n   • " + scoreString)
+		return greenStyle.Render("\n  • " + scoreString)
 	} else {
-		return redStyle.Render("\n   • " + scoreString)
+		return redStyle.Render("\n  • " + scoreString)
 	}
-
 }
 
 // Formats the win-loss record for a draw

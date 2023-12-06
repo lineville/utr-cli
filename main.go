@@ -23,7 +23,7 @@ type model struct {
 
 func initialModel(args ...string) model {
 	ti := textinput.New()
-	ti.Prompt = "🔍 "
+	ti.Prompt = "🔍 » "
 	ti.PromptStyle.PaddingLeft(2)
 	ti.Placeholder = "Player name"
 	ti.Focus()
@@ -135,7 +135,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the UI from the current model
 func (m model) View() string {
 	if m.searching {
-		return "\n" + m.searchQuery.View()
+		return "\n  Search for a Tennis or PickleBall player\n\n" + m.searchQuery.View()
 	}
 	if m.selectedPlayer != nil {
 		return "\n" + m.resultsList.View()
