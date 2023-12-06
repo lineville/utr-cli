@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -59,7 +60,7 @@ func (e Event) Title() string {
 }
 
 func (e Event) Height() int  { return 1 }
-func (e Event) Spacing() int { return 0 }
+func (e Event) Spacing() int { return 1 }
 
 func (Event) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	return nil
@@ -75,16 +76,31 @@ func (d Event) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 		return
 	}
 
+	strs := make([]string, len(i.Draws)+1)
 	event := fmt.Sprintf("%d. %s", index+1, i.Title())
+	strs[0] = event
+	for i, draw := range i.Draws {
+		results := draw.Results
+		wins := 0
+		losses := 0
+		for _, result := range results {
+			if result.IsWinner {
+				wins++
+			} else {
+				losses++
+			}
+		}
+		strs[i+1] = draw.Name + " ( " + strconv.Itoa(wins) + " - " + strconv.Itoa(losses) + " )"
+	}
 
-	fn := itemStyle.Render
+	fn := func(s ...string) string { return itemStyle.Render(strings.Join(s, "\n   • ")) }
 	if index == m.Index() {
 		fn = func(s ...string) string {
-			return selectedItemStyle.Render("→ " + strings.Join(s, "\n"))
+			return selectedItemStyle.Render("→ " + strings.Join(s, "\n   • "))
 		}
 	}
 
-	fmt.Fprint(w, fn(event))
+	fmt.Fprint(w, fn(strs...))
 }
 
 func formatDate(date string) string {
