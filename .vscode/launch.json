@@ -11,7 +11,8 @@
       "mode": "debug",
       "program": "${workspaceRoot}",
       "cwd": "${workspaceRoot}",
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "args": ["liam nev"]
     }
   ]
 }

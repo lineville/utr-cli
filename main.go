@@ -10,7 +10,7 @@ import (
 )
 
 // -----------------------------------------------------------------------------
-// Main handles the main program flow Model, View and Update based on Elm architecture
+// Main handles the main program flow Model, View and Update based on Elm arch
 // -----------------------------------------------------------------------------
 
 type model struct {
@@ -21,7 +21,7 @@ type model struct {
 	selectedPlayer list.Item
 }
 
-func initialModel() model {
+func initialModel(args ...string) model {
 	ti := textinput.New()
 	ti.Prompt = "🔍 "
 	ti.PromptStyle.PaddingLeft(2)
@@ -39,17 +39,32 @@ func initialModel() model {
 	resultsList.Styles.TitleBar.PaddingLeft(2)
 	resultsList.SetStatusBarItemName("event", "events")
 
-	return model{
+	m := model{
 		searching:      true,
 		searchQuery:    ti,
 		playerList:     playerList,
 		resultsList:    resultsList,
 		selectedPlayer: nil,
 	}
+	// If a name was passed in via cli args search for it
+	if len(args) > 0 {
+		m.searchQuery.SetValue(args[0])
+		ti.SetValue(args[0])
+		m.searching = false
+		return m
+	}
+
+	return m
 }
 
 // Init initializes the model with some reasonable defaults
 func (m model) Init() tea.Cmd {
+	// If a name was passed in via cli args search for it
+	if m.searchQuery.Value() != "" {
+		return searchPlayers(m.searchQuery.Value())
+	}
+
+	// Default to text input blinking
 	return textinput.Blink
 }
 
@@ -70,11 +85,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.searching {
 				m.searching = false
-				m.playerList.ToggleSpinner()
 				return m, searchPlayers(m.searchQuery.Value())
 			} else {
 				m.selectedPlayer, _ = m.playerList.SelectedItem().(Player)
-				m.resultsList.ToggleSpinner()
 				return m, playerProfile(m.selectedPlayer.(Player).Source.Id)
 			}
 		}
@@ -85,7 +98,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			players[i] = list.Item(player)
 		}
 		m.playerList.SetItems(players)
-		m.playerList.ToggleSpinner()
 		return m, nil
 
 	case MatchResults:
@@ -94,7 +106,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			matches[i] = list.Item(event)
 		}
 		m.resultsList.SetItems(matches)
-		m.resultsList.ToggleSpinner()
 		return m, nil
 
 	case Profile:
@@ -135,7 +146,10 @@ func (m model) View() string {
 }
 
 func main() {
-	if _, err := tea.NewProgram(initialModel()).Run(); err != nil {
+	// Pass in command line arguments to the program
+	args := os.Args[1:] // TODO pass into the initial model or the options ?
+
+	if _, err := tea.NewProgram(initialModel(args...)).Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
