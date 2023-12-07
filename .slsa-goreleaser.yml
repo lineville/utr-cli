@@ -1,7 +1,0 @@
-version: 1
-
-goos: linux
-
-goarch: amd64
-
-binary: utr-cli-{{ .Os }}-{{ .Arch }}
