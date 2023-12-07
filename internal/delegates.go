@@ -80,13 +80,17 @@ func (d Event) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 		return
 	}
 
+	playerName := strings.Split(m.Title, "'s Match Results")[0]
+
 	draws := make([]string, len(e.Draws)+1)
 	draws[0] = fmt.Sprintf("%d. %s", index+1, e.Title())
 	for i, d := range e.Draws {
-		draws[i+1] = d.Name
+		if d.Name == "" {
+			draws[i+1] = d.TeamType + " " + formatDrawWinLoss(d, playerName)
+		} else {
+			draws[i+1] = d.Name + " " + formatDrawWinLoss(d, playerName)
+		}
 	}
-
-	playerName := strings.Split(m.Title, "'s Match Results")[0]
 
 	// Render the unselected draws
 	fn := func(s ...string) string { return itemStyle.Render(strings.Join(s, "\n   • ")) }
@@ -95,7 +99,11 @@ func (d Event) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 		fn = func(s ...string) string {
 			eventPrintout := selectedItemStyle.Render(fmt.Sprintf("→ %d. %s", index+1, e.Title()))
 			for _, d := range e.Draws {
-				eventPrintout += itemStyle.Render("\n   • " + d.Name + " " + formatDrawWinLoss(d, playerName))
+				if d.Name == "" {
+					eventPrintout += itemStyle.Render("\n   • " + d.TeamType + " " + formatDrawWinLoss(d, playerName))
+				} else {
+					eventPrintout += itemStyle.Render("\n   • " + d.Name + " " + formatDrawWinLoss(d, playerName))
+				}
 				for _, result := range d.Results {
 					eventPrintout += formatMatchScore(result, playerName)
 				}
@@ -128,7 +136,11 @@ func formatMatchScore(match Match, playerName string) string {
 		scoreString += fmt.Sprintf(", %d-%d", match.Score.SecondSet.WinnerScore, match.Score.SecondSet.LoserScore)
 	}
 	if match.Score.ThirdSet.WinnerScore != 0 {
-		scoreString += fmt.Sprintf(", %d-%d", match.Score.ThirdSet.WinnerScore, match.Score.ThirdSet.LoserScore)
+		if match.Score.ThirdSet.WinnerScore == 1 {
+			scoreString += fmt.Sprintf(", %d-%d", match.Score.ThirdSet.WinnerTieBreakScore, match.Score.ThirdSet.LoserTieBreakScore)
+		} else {
+			scoreString += fmt.Sprintf(", %d-%d", match.Score.ThirdSet.WinnerScore, match.Score.ThirdSet.LoserScore)
+		}
 	}
 	scoreString += ")"
 
@@ -166,9 +178,6 @@ func formatDate(date string) string {
 	return t.Format("01/02/2006")
 }
 
-// TODO show tiebreak scores conditionally (also default to 3rd set tiebreak as the set score if it's 1-0)
-// TODO show default draw as 'individual match if none is there'
-// TODO show overall win-loss record for each draw when non-selected
-// TODO show the overall record across singles/doubles somewhere
+// TODO show the overall record across all results somewhere
 // TODO show utr ratings somewhere
 // TODO show gender on the search results
