@@ -142,10 +142,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			matches[i] = list.Item(event)
 		}
 		m.resultsList.SetItems(matches)
+		m.resultsList.NewStatusMessage(fmt.Sprintf("\n\n Win/Loss ( %s)", msg.WinLossString))
 		return m, nil
 
 	case internal.Profile:
 		m.resultsList.Title = m.selectedPlayer.(internal.Player).Source.DisplayName + "'s Match Results"
+		m.resultsList.Title += fmt.Sprintf("\n\nUTR (Singles: %.2f / Doubles: %.2f)", msg.SinglesUTR, msg.DoublesUTR)
 		return m, internal.PlayerResults(m.selectedPlayer.(internal.Player).Source.Id)
 
 	}

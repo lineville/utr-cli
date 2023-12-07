@@ -42,7 +42,7 @@ func (d Player) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 		return
 	}
 
-	player := fmt.Sprintf("%d. %s", index+1, i.Source.DisplayName+" ("+i.Source.Location.Display+")")
+	player := fmt.Sprintf("%d. %s (%s) [Age: %s]", index+1, i.Source.DisplayName, i.Source.Location.Display, i.Source.AgeRange)
 
 	fn := itemStyle.Render
 	if index == m.Index() {
@@ -177,7 +177,3 @@ func formatDate(date string) string {
 	}
 	return t.Format("01/02/2006")
 }
-
-// TODO show the overall record across all results somewhere
-// TODO show utr ratings somewhere
-// TODO show gender on the search results
