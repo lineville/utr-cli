@@ -1,6 +1,6 @@
 module github.com/lineville/utr-cli
 
-go 1.23
+go 1.21
 
 require (
 	github.com/charmbracelet/bubbles v0.16.1
