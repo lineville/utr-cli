@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// Style definitions
 var (
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(2).PaddingRight(2)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).PaddingRight(2).Foreground(lipgloss.Color("#25CCF7")).Border(lipgloss.RoundedBorder())
@@ -92,7 +93,6 @@ func (d Event) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 		}
 	}
 
-	// Render the unselected draws
 	fn := func(s ...string) string { return itemStyle.Render(strings.Join(s, "\n   • ")) }
 
 	if index == m.Index() {
@@ -116,6 +116,11 @@ func (d Event) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 	fmt.Fprint(w, fn(draws...))
 }
 
+// -----------------------------------------------------------------------------
+// Rendering Helpers
+// -----------------------------------------------------------------------------
+
+// Formats the match score for a draw
 func formatMatchScore(match Match, playerName string) string {
 	winner := match.Players.Winner1.FirstName + " " + match.Players.Winner1.LastName
 	if match.Players.Winner2.FirstName != "" {

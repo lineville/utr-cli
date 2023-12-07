@@ -24,6 +24,7 @@ type model struct {
 	selectedPlayer list.Item
 }
 
+// Defines the initial model of the program
 func initialModel(args ...string) model {
 	ti := textinput.New()
 	ti.Prompt = "🔍 » "
@@ -84,9 +85,8 @@ func (m model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// Update handles events from the UI and updates the model
-
 // TODO Implement spinners while data is fetching
+// Update handles events from the UI and updates the model
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 

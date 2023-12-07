@@ -10,6 +10,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// -----------------------------------------------------------------------------
+// API Calls
+// -----------------------------------------------------------------------------
+
 const baseUrl = "https://app.universaltennis.com/api"
 
 // Searches for players by name (only shows 5 results)
