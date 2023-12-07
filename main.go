@@ -36,13 +36,13 @@ func initialModel(args ...string) model {
 	playerList.Title = "Select a player"
 	playerList.Styles.TitleBar.PaddingLeft(2)
 	playerList.Styles.Title.Background(lipgloss.Color("#25CCF7"))
-	playerList.SetStatusBarItemName("🎾 player", "🎾 players")
+	playerList.SetStatusBarItemName("player", "players")
 
 	resultsList := list.New(nil, internal.Event{}, 40, 20)
 	resultsList.Title = ""
 	resultsList.Styles.TitleBar.PaddingLeft(2)
 	resultsList.Styles.Title.Background(lipgloss.Color("#25CCF7"))
-	resultsList.SetStatusBarItemName("🎾 event", "🎾 events")
+	resultsList.SetStatusBarItemName("event", "events")
 
 	additionalKeyBindings := func() []key.Binding {
 		return []key.Binding{
@@ -94,7 +94,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.playerList.SetWidth(msg.Width)
 		m.resultsList.SetWidth(msg.Width)
-		m.playerList.SetHeight(msg.Height - 2)
+		m.playerList.SetHeight(msg.Height - 24)
 		m.resultsList.SetHeight(msg.Height - 24)
 		return m, nil
 
@@ -118,9 +118,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				if m.selectedPlayer == nil {
 					m.searching = true
+					m.playerList.SetItems(nil)
 					return m, nil
 				} else {
 					m.selectedPlayer = nil
+					m.resultsList.SetItems(nil)
 					return m, internal.SearchPlayers(m.searchQuery.Value())
 				}
 			}
