@@ -22,7 +22,7 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
-      - name: Set up Go\
+      - name: Set up Go
         uses: actions/setup-go@v4
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
