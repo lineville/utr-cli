@@ -49,3 +49,18 @@ signs:
         "--detach-sign",
         "${artifact}",
       ]
+
+brews:
+  - name: utr-cli
+    commit_author:
+      name: lineville
+      email: liamgneville@gmail.com
+    folder: Formula
+    homepage: https://github.com/lineville/utr-cli
+    description: A command line interface for the [Universal Tennis Rating](https://www.myutr.com/) system. This tool allows you to quickly lookup Tennis or PickleBall players and view their match history.
+    license: MIT
+    dependencies:
+      - go
+    repository:
+      owner: lineville
+      name: utr-cli
