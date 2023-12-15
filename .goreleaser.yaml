@@ -64,4 +64,4 @@ brews:
       - go
     repository:
       owner: lineville
-      name: utr-cli
+      name: homebrew-utr-cli
