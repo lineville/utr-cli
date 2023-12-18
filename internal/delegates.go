@@ -150,9 +150,9 @@ func formatMatchScore(match Match, playerName string) string {
 	scoreString += ")"
 
 	if strings.Contains(winner, playerName) {
-		return greenStyle.Render("\n   • " + scoreString)
+		return greenStyle.Render("\n   ✅ " + scoreString)
 	} else {
-		return redStyle.Render("\n   • " + scoreString)
+		return redStyle.Render("\n   ❌ " + scoreString)
 	}
 }
 

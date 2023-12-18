@@ -40,11 +40,14 @@ func initialModel(args ...string) model {
 	playerList := list.New(nil, internal.Player{}, 40, 20)
 	playerList.Title = "Select a player"
 	playerList.Styles.TitleBar.PaddingLeft(2)
+	playerList.Styles.Title.AlignHorizontal(lipgloss.Center)
 	playerList.Styles.Title.Background(lipgloss.Color("#25CCF7"))
 	playerList.SetStatusBarItemName("player", "players")
 
 	resultsList := list.New(nil, internal.Event{}, 40, 20)
 	resultsList.Title = ""
+	resultsList.Styles.TitleBar.PaddingLeft(2)
+	resultsList.Styles.Title.AlignHorizontal(lipgloss.Center)
 	resultsList.Styles.TitleBar.PaddingLeft(2)
 	resultsList.Styles.Title.Background(lipgloss.Color("#25CCF7"))
 	resultsList.SetStatusBarItemName("event", "events")
@@ -176,7 +179,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case internal.Profile:
-		m.loading = false
 		m.resultsList.Title = m.selectedPlayer.(internal.Player).Source.DisplayName + "'s Match Results"
 		m.resultsList.Title += fmt.Sprintf("\n\nUTR (Singles: %.2f / Doubles: %.2f)", msg.SinglesUTR, msg.DoublesUTR)
 		return m, internal.PlayerResults(m.selectedPlayer.(internal.Player).Source.Id)
@@ -208,9 +210,9 @@ func (m model) View() string {
 	}
 	if m.loading {
 		if m.selectedPlayer != nil {
-			return "\n\n" + m.spinner.View() + " Searching for " + m.selectedPlayer.(internal.Player).Source.DisplayName + "'s match results..."
+			return "\n\n" + m.spinner.View() + " Searching for " + m.selectedPlayer.(internal.Player).Source.DisplayName + "'s match results"
 		} else {
-			return "\n\n" + m.spinner.View() + " Searching for players..."
+			return "\n\n" + m.spinner.View() + " Searching for " + m.searchQuery.Value()
 		}
 	}
 	if m.selectedPlayer != nil {
