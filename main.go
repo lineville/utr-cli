@@ -253,11 +253,10 @@ func (m model) View() string {
 
 		for i := 0; i < len(commandChoices); i++ {
 			if m.cursor == i {
-				s.WriteString("→  ")
+				s.WriteString(internal.SelectedItemStyle.Render("→  " + commandChoices[i]))
 			} else {
-				s.WriteString(" ")
+				s.WriteString(internal.ItemStyle.Render("   " + commandChoices[i]))
 			}
-			s.WriteString(commandChoices[i])
 			s.WriteString("\n\n")
 		}
 
