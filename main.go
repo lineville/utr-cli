@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -18,15 +18,28 @@ import (
 // Main handles the main program flow Model, View and Update based on Elm arch
 // -----------------------------------------------------------------------------
 
+const (
+	initialSelection = iota
+	searchingUTRPlayer
+	selectingUTRPlayer
+	viewingUTRPlayerResults
+	searchingUSTARanking
+	searchingUSTARankingsBySection
+	loading
+)
+
 type model struct {
-	searching      bool
-	loading        bool
-	searchQuery    textinput.Model
-	playerList     list.Model
-	resultsList    list.Model
-	selectedPlayer list.Item
-	spinner        spinner.Model
+	mode             int
+	searchQuery      textinput.Model
+	playerList       list.Model
+	resultsList      list.Model
+	selectedPlayer   list.Item
+	spinner          spinner.Model
+	commandSelection string
+	cursor           int
 }
+
+var commandChoices = []string{"Match Results (UTR)", "Ranking (USTA)", "Rankings by Section (USTA)"}
 
 // Defines the initial model of the program
 func initialModel(args ...string) model {
@@ -71,21 +84,12 @@ func initialModel(args ...string) model {
 	playerList.AdditionalShortHelpKeys = additionalKeyBindings
 
 	m := model{
-		searching:      true,
-		loading:        false,
+		mode:           initialSelection,
 		searchQuery:    ti,
 		playerList:     playerList,
 		resultsList:    resultsList,
 		selectedPlayer: nil,
 		spinner:        s,
-	}
-	// If a name was passed in via cli args search for it
-	if len(args) > 0 {
-		m.searchQuery.SetValue(args[0])
-		ti.SetValue(args[0])
-		m.searching = false
-		m.loading = true
-		return m
 	}
 
 	return m
@@ -93,18 +97,7 @@ func initialModel(args ...string) model {
 
 // Init initializes the model with some reasonable defaults
 func (m model) Init() tea.Cmd {
-	// If a name was passed in via cli args search for it
-	if m.searchQuery.Value() != "" {
-		return tea.Batch(
-			m.spinner.Tick,
-			internal.SearchPlayers(m.searchQuery.Value()),
-		)
-	}
-
-	return tea.Batch(
-		m.spinner.Tick,
-		textinput.Blink,
-	)
+	return nil
 }
 
 // Update handles events from the UI and updates the model
@@ -112,6 +105,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+
 	case tea.WindowSizeMsg:
 		m.playerList.SetWidth(msg.Width)
 		m.resultsList.SetWidth(msg.Width)
@@ -130,42 +124,88 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "enter":
-			if m.selectedPlayer == nil {
-				m.loading = true
-			}
-			if m.searching {
-				m.searching = false
+			switch m.mode {
+
+			case initialSelection:
+				m.commandSelection = commandChoices[m.cursor]
+
+				switch m.commandSelection {
+
+				case "Match Results (UTR)":
+					m.mode = searchingUTRPlayer
+					return m, tea.Batch(
+						m.spinner.Tick,
+						textinput.Blink,
+					)
+
+				case "Ranking (USTA)": // TODO
+					return m, tea.Quit
+
+				case "Rankings by Section (USTA)": // TODO
+					return m, tea.Quit
+				}
+
+			case searchingUTRPlayer:
+				m.mode = loading
 				return m, internal.SearchPlayers(m.searchQuery.Value())
-			} else {
+
+			case selectingUTRPlayer:
+				m.mode = viewingUTRPlayerResults
 				m.selectedPlayer, _ = m.playerList.SelectedItem().(internal.Player)
 				return m, internal.PlayerProfile(m.selectedPlayer.(internal.Player).Source.Id)
 			}
 
-		case "esc":
-			if m.searching {
-				return m, tea.Quit
-			} else {
-				if m.selectedPlayer == nil {
-					m.searching = true
-					m.playerList.SetItems(nil)
-					return m, nil
-				} else {
-					m.selectedPlayer = nil
-					m.resultsList.SetItems(nil)
-					return m, internal.SearchPlayers(m.searchQuery.Value())
+		case "up", "k":
+			if m.mode == initialSelection {
+				m.cursor--
+				if m.cursor < 0 {
+					m.cursor = len(commandChoices) - 1
 				}
+				return m, nil
+			}
+
+		case "down", "j":
+			if m.mode == initialSelection {
+				m.cursor++
+				if m.cursor >= len(commandChoices) {
+					m.cursor = 0
+				}
+				return m, nil
+			}
+
+		case "esc":
+			switch m.mode {
+			case initialSelection:
+				return m, tea.Quit
+
+			case searchingUTRPlayer:
+				m.mode = initialSelection
+				m.searchQuery.SetValue("")
+				return m, nil
+
+			case selectingUTRPlayer:
+				m.mode = searchingUTRPlayer
+				m.selectedPlayer = nil
+				m.resultsList.SetItems(nil)
+				return m, tea.Batch(
+					m.spinner.Tick,
+					textinput.Blink,
+				)
+
+			case viewingUTRPlayerResults:
+				m.mode = selectingUTRPlayer
+				m.resultsList.SetItems(nil)
+				return m, internal.SearchPlayers(m.searchQuery.Value())
 			}
 		}
 
 	case internal.PlayerSearchResults:
-		// sleep for a couple seconds to simulate loading
-		time.Sleep(2 * time.Second)
 		players := make([]list.Item, len(msg.Players))
 		for i, player := range msg.Players {
 			players[i] = list.Item(player)
 		}
 		m.playerList.SetItems(players)
-		m.loading = false
+		m.mode = selectingUTRPlayer
 		return m, nil
 
 	case internal.MatchResults:
@@ -175,7 +215,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.resultsList.SetItems(matches)
 		m.resultsList.NewStatusMessage(fmt.Sprintf("\n\n Win/Loss ( %s)", msg.WinLossString))
-		m.loading = false
+		m.mode = viewingUTRPlayerResults
 		return m, nil
 
 	case internal.Profile:
@@ -185,41 +225,59 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	}
 
-	if m.searching {
-		// Perform the default update to the text input
+	switch m.mode {
+	case searchingUTRPlayer:
 		m.searchQuery, cmd = m.searchQuery.Update(msg)
 		return m, cmd
-	} else {
-		// No player is selected this is just moving cursor around the player list
-		if m.selectedPlayer == nil {
-			m.playerList, cmd = m.playerList.Update(msg)
-			return m, cmd
-		} else {
-			// A player is selected, this is moving around the results list
-			m.resultsList, cmd = m.resultsList.Update(msg)
-			return m, cmd
-		}
+
+	case selectingUTRPlayer:
+		m.playerList, cmd = m.playerList.Update(msg)
+		return m, cmd
+
+	case viewingUTRPlayerResults:
+		m.resultsList, cmd = m.resultsList.Update(msg)
+		return m, cmd
+
+	default:
+		return m, nil
 	}
 
 }
 
 // View renders the UI from the current model
 func (m model) View() string {
-	if m.searching {
-		return "\n  Search for a Tennis or PickleBall player\n\n" + m.searchQuery.View()
-	}
-	if m.loading {
-		if m.selectedPlayer != nil {
-			return "\n\n" + m.spinner.View() + " Searching for " + m.selectedPlayer.(internal.Player).Source.DisplayName + "'s match results"
-		} else {
-			return "\n\n" + m.spinner.View() + " Searching for " + m.searchQuery.Value()
-		}
-	}
-	if m.selectedPlayer != nil {
-		return "\n\n" + m.resultsList.View()
-	}
+	switch m.mode {
+	case initialSelection:
+		s := strings.Builder{}
+		s.WriteString("\n  What kind of search would you like to perform?\n\n\n")
 
-	return "\n\n" + m.playerList.View()
+		for i := 0; i < len(commandChoices); i++ {
+			if m.cursor == i {
+				s.WriteString("→  ")
+			} else {
+				s.WriteString(" ")
+			}
+			s.WriteString(commandChoices[i])
+			s.WriteString("\n\n")
+		}
+
+		return s.String()
+
+	case searchingUTRPlayer:
+		return "\n  Search for a Tennis or PickleBall player\n\n" + m.searchQuery.View()
+
+	case selectingUTRPlayer:
+		return "\n\n" + m.playerList.View()
+
+	case viewingUTRPlayerResults:
+		return "\n\n" + m.resultsList.View()
+
+	case loading:
+		return "\n\n" + m.spinner.View() + " Searching..."
+
+	default:
+		return ""
+	}
 }
 
 func main() {
