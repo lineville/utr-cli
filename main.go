@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -23,7 +22,11 @@ const (
 	searchingUTRPlayer
 	selectingUTRPlayer
 	viewingUTRPlayerResults
-	searchingUSTARanking
+	searchingUSTAPlayer
+	searchingUSTAFormat
+	searchingUSTAGender
+	searchingUSTALevel
+	searchingUSTASection
 	searchingUSTARankingsBySection
 	loading
 )
@@ -34,12 +37,20 @@ type model struct {
 	playerList       list.Model
 	resultsList      list.Model
 	selectedPlayer   list.Item
+	selectedFormat   string
+	selectedGender   string
+	selectedLevel    string
+	selectedSection  string
 	spinner          spinner.Model
 	commandSelection string
 	cursor           int
 }
 
 var commandChoices = []string{"Match Results (UTR)", "Ranking (USTA)", "Rankings by Section (USTA)"}
+var formatChoices = []string{"Singles", "Doubles"}
+var genderChoices = []string{"M", "F"}
+var levelChoices = []string{"3.0", "3.5", "4.0", "4.5", "5.0"}
+var sectionChoices = []string{"Eastern", "Florida", "Hawaii Pacific", "Intermountain", "Mid-Atlantic", "Middle States", "Midwest", "Missouri Valley", "New England", "Northern California", "Northern", "Pacific NW", "Southern", "Southern California", "Southwest", "Texas", "Unassigned"}
 
 // Defines the initial model of the program
 func initialModel(args ...string) model {
@@ -138,18 +149,49 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						textinput.Blink,
 					)
 
-				case "Ranking (USTA)": // TODO
-					m.mode = searchingUSTARanking
-					return m, tea.Quit
+				case "Ranking (USTA)":
+					m.mode = searchingUSTAPlayer
+					return m, tea.Batch(
+						m.spinner.Tick,
+						textinput.Blink,
+					)
 
-				case "Rankings by Section (USTA)": // TODO
+				case "Rankings by Section (USTA)":
 					m.mode = searchingUSTARankingsBySection
-					return m, tea.Quit
+					return m, tea.Batch(
+						m.spinner.Tick,
+						textinput.Blink,
+					)
 				}
 
 			case searchingUTRPlayer:
 				m.mode = loading
-				return m, internal.SearchPlayers(m.searchQuery.Value())
+				return m, internal.SearchUTRPlayers(m.searchQuery.Value())
+
+			case searchingUSTAPlayer:
+				m.mode = searchingUSTAFormat
+				m.cursor = 0
+				return m, nil
+
+			case searchingUSTAFormat:
+				m.mode = searchingUSTAGender
+				m.cursor = 0
+				return m, nil
+
+			case searchingUSTAGender:
+				m.mode = searchingUSTALevel
+				m.cursor = 0
+				return m, nil
+
+			case searchingUSTALevel:
+				m.mode = searchingUSTASection
+				m.cursor = 0
+				return m, nil
+
+			case searchingUSTASection:
+				m.mode = loading
+				m.cursor = 0
+				return m, internal.SearchUSTAPlayers(m.searchQuery.Value(), m.selectedFormat, m.selectedGender, m.selectedLevel, m.selectedSection)
 
 			case selectingUTRPlayer:
 				m.mode = viewingUTRPlayerResults
@@ -158,22 +200,56 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "up", "k":
-			if m.mode == initialSelection {
-				m.cursor--
+			m.cursor--
+			switch m.mode {
+			case initialSelection:
 				if m.cursor < 0 {
 					m.cursor = len(commandChoices) - 1
 				}
-				return m, nil
+			case searchingUSTAFormat:
+				if m.cursor < 0 {
+					m.cursor = len(formatChoices) - 1
+				}
+			case searchingUSTAGender:
+				if m.cursor < 0 {
+					m.cursor = len(genderChoices) - 1
+				}
+			case searchingUSTALevel:
+				if m.cursor < 0 {
+					m.cursor = len(levelChoices) - 1
+				}
+			case searchingUSTASection:
+				if m.cursor < 0 {
+					m.cursor = len(sectionChoices) - 1
+				}
 			}
+			return m, nil
 
 		case "down", "j":
-			if m.mode == initialSelection {
-				m.cursor++
+			m.cursor++
+			switch m.mode {
+			case initialSelection:
 				if m.cursor >= len(commandChoices) {
 					m.cursor = 0
 				}
-				return m, nil
+			case searchingUSTAFormat:
+				if m.cursor >= len(formatChoices) {
+					m.cursor = 0
+				}
+			case searchingUSTAGender:
+				if m.cursor >= len(genderChoices) {
+					m.cursor = 0
+				}
+			case searchingUSTALevel:
+				if m.cursor >= len(levelChoices) {
+					m.cursor = 0
+				}
+			case searchingUSTASection:
+				if m.cursor >= len(sectionChoices) {
+					m.cursor = 0
+				}
 			}
+			return m, nil
 
 		case "esc":
 			switch m.mode {
@@ -197,8 +273,39 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case viewingUTRPlayerResults:
 				m.mode = selectingUTRPlayer
 				m.resultsList.SetItems(nil)
-				return m, internal.SearchPlayers(m.searchQuery.Value())
+				return m, internal.SearchUTRPlayers(m.searchQuery.Value())
+
+			case searchingUSTAPlayer:
+				m.mode = initialSelection
+				m.searchQuery.SetValue("")
+				return m, nil
+
+			case searchingUSTAFormat:
+				m.mode = searchingUSTAPlayer
+				m.selectedFormat = ""
+				return m, nil
+
+			case searchingUSTAGender:
+				m.mode = searchingUSTAFormat
+				m.selectedGender = ""
+				return m, nil
+
+			case searchingUSTALevel:
+				m.mode = searchingUSTAGender
+				m.selectedLevel = ""
+				return m, nil
+
+			case searchingUSTASection:
+				m.mode = searchingUSTALevel
+				m.selectedSection = ""
+				return m, nil
+
+			case searchingUSTARankingsBySection:
+				m.mode = initialSelection
+				m.searchQuery.SetValue("")
+				return m, nil
 			}
+
 		}
 
 	case internal.PlayerSearchResults:
@@ -232,6 +339,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.searchQuery, cmd = m.searchQuery.Update(msg)
 		return m, cmd
 
+	case searchingUSTAPlayer:
+		m.searchQuery, cmd = m.searchQuery.Update(msg)
+		return m, cmd
+
+	case searchingUSTARankingsBySection:
+		m.searchQuery, cmd = m.searchQuery.Update(msg)
+		return m, cmd
+
 	case selectingUTRPlayer:
 		m.playerList, cmd = m.playerList.Update(msg)
 		return m, cmd
@@ -250,19 +365,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	switch m.mode {
 	case initialSelection:
-		s := strings.Builder{}
-		s.WriteString("\n  What kind of search would you like to perform?\n\n\n")
-
-		for i := 0; i < len(commandChoices); i++ {
-			if m.cursor == i {
-				s.WriteString(internal.SelectedItemStyle.Render("→  " + commandChoices[i]))
-			} else {
-				s.WriteString(internal.ItemStyle.Render("   " + commandChoices[i]))
-			}
-			s.WriteString("\n\n")
-		}
-
-		return s.String()
+		return internal.CreatePrompt("\n  What kind of search would you like to perform?\n\n\n", commandChoices, m.cursor)
 
 	case searchingUTRPlayer:
 		return "\n  Search for a Tennis or PickleBall player\n\n" + m.searchQuery.View()
@@ -273,8 +376,20 @@ func (m model) View() string {
 	case viewingUTRPlayerResults:
 		return "\n\n" + m.resultsList.View()
 
-	case searchingUSTARanking:
+	case searchingUSTAPlayer:
 		return "\n Search for a USTA Player\n\n" + m.searchQuery.View()
+
+	case searchingUSTAFormat:
+		return internal.CreatePrompt("\n  Select a match format\n\n\n", formatChoices, m.cursor)
+
+	case searchingUSTAGender:
+		return internal.CreatePrompt("\n  Select a gender\n\n\n", genderChoices, m.cursor)
+
+	case searchingUSTALevel:
+		return internal.CreatePrompt("\n  Select a level\n\n\n", levelChoices, m.cursor)
+
+	case searchingUSTASection:
+		return internal.CreatePrompt("\n  Select a section\n\n\n", sectionChoices, m.cursor)
 
 	case searchingUSTARankingsBySection:
 		return "\n Search for USTA Rankings by Section\n\n" + m.searchQuery.View()

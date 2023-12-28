@@ -18,8 +18,8 @@ import (
 
 // Style definitions
 var (
-	ItemStyle         = lipgloss.NewStyle().PaddingLeft(2).PaddingRight(2)
-	SelectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).PaddingRight(2).Foreground(lipgloss.Color("#25CCF7")).Border(lipgloss.RoundedBorder())
+	itemStyle         = lipgloss.NewStyle().PaddingLeft(2).PaddingRight(2)
+	selecteditemStyle = lipgloss.NewStyle().PaddingLeft(2).PaddingRight(2).Foreground(lipgloss.Color("#25CCF7")).Border(lipgloss.RoundedBorder())
 	greenStyle        = lipgloss.NewStyle().PaddingLeft(4).Foreground(lipgloss.Color("#0be881"))
 	redStyle          = lipgloss.NewStyle().PaddingLeft(4).Foreground(lipgloss.Color("#f53b57"))
 )
@@ -45,10 +45,10 @@ func (d Player) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 
 	player := fmt.Sprintf("%d. %s (%s) [Age: %s]", index+1, i.Source.DisplayName, i.Source.Location.Display, i.Source.AgeRange)
 
-	fn := ItemStyle.Render
+	fn := itemStyle.Render
 	if index == m.Index() {
 		fn = func(s ...string) string {
-			return SelectedItemStyle.Render("→ " + strings.Join(s, " "))
+			return selecteditemStyle.Render("→ " + strings.Join(s, " "))
 		}
 	}
 
@@ -93,16 +93,16 @@ func (d Event) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 		}
 	}
 
-	fn := func(s ...string) string { return ItemStyle.Render(strings.Join(s, "\n   • ")) }
+	fn := func(s ...string) string { return itemStyle.Render(strings.Join(s, "\n   • ")) }
 
 	if index == m.Index() {
 		fn = func(s ...string) string {
-			eventPrintout := SelectedItemStyle.Render(fmt.Sprintf("→ %d. %s", index+1, e.Title()))
+			eventPrintout := selecteditemStyle.Render(fmt.Sprintf("→ %d. %s", index+1, e.Title()))
 			for _, d := range e.Draws {
 				if d.Name == "" {
-					eventPrintout += ItemStyle.Render("\n   • " + d.TeamType + " " + formatDrawWinLoss(d, playerName))
+					eventPrintout += itemStyle.Render("\n   • " + d.TeamType + " " + formatDrawWinLoss(d, playerName))
 				} else {
-					eventPrintout += ItemStyle.Render("\n   • " + d.Name + " " + formatDrawWinLoss(d, playerName))
+					eventPrintout += itemStyle.Render("\n   • " + d.Name + " " + formatDrawWinLoss(d, playerName))
 				}
 				for _, result := range d.Results {
 					eventPrintout += formatMatchScore(result, playerName)
@@ -181,4 +181,21 @@ func formatDate(date string) string {
 		fmt.Println(err)
 	}
 	return t.Format("01/02/2006")
+}
+
+// Formats a list of input options for the user
+func CreatePrompt(prompt string, options []string, cursor int) string {
+	s := strings.Builder{}
+	s.WriteString(prompt)
+
+	for i := 0; i < len(options); i++ {
+		if cursor == i {
+			s.WriteString(selecteditemStyle.Render("→  " + options[i]))
+		} else {
+			s.WriteString(itemStyle.Render("   " + options[i]))
+		}
+		s.WriteString("\n\n")
+	}
+
+	return s.String()
 }
