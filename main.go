@@ -139,9 +139,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					)
 
 				case "Ranking (USTA)": // TODO
+					m.mode = searchingUSTARanking
 					return m, tea.Quit
 
 				case "Rankings by Section (USTA)": // TODO
+					m.mode = searchingUSTARankingsBySection
 					return m, tea.Quit
 				}
 
@@ -270,6 +272,12 @@ func (m model) View() string {
 
 	case viewingUTRPlayerResults:
 		return "\n\n" + m.resultsList.View()
+
+	case searchingUSTARanking:
+		return "\n Search for a USTA Player\n\n" + m.searchQuery.View()
+
+	case searchingUSTARankingsBySection:
+		return "\n Search for USTA Rankings by Section\n\n" + m.searchQuery.View()
 
 	case loading:
 		return "\n\n" + m.spinner.View() + " Searching..."
