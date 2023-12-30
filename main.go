@@ -206,24 +206,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor < 0 {
 					m.cursor = len(commandChoices) - 1
 				}
+				return m, nil
 			case searchingUSTAFormat:
 				if m.cursor < 0 {
 					m.cursor = len(formatChoices) - 1
 				}
+				return m, nil
 			case searchingUSTAGender:
 				if m.cursor < 0 {
 					m.cursor = len(genderChoices) - 1
 				}
+				return m, nil
 			case searchingUSTALevel:
 				if m.cursor < 0 {
 					m.cursor = len(levelChoices) - 1
 				}
+				return m, nil
 			case searchingUSTASection:
 				if m.cursor < 0 {
 					m.cursor = len(sectionChoices) - 1
 				}
+				return m, nil
 			}
-			return m, nil
 
 		case "down", "j":
 			m.cursor++
@@ -232,24 +236,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor >= len(commandChoices) {
 					m.cursor = 0
 				}
+				return m, nil
 			case searchingUSTAFormat:
 				if m.cursor >= len(formatChoices) {
 					m.cursor = 0
 				}
+				return m, nil
 			case searchingUSTAGender:
 				if m.cursor >= len(genderChoices) {
 					m.cursor = 0
 				}
+				return m, nil
 			case searchingUSTALevel:
 				if m.cursor >= len(levelChoices) {
 					m.cursor = 0
 				}
+				return m, nil
 			case searchingUSTASection:
 				if m.cursor >= len(sectionChoices) {
 					m.cursor = 0
 				}
+				return m, nil
 			}
-			return m, nil
 
 		case "esc":
 			switch m.mode {
